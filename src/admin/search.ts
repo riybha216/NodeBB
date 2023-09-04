@@ -43,17 +43,19 @@ function filterDirectories(directories: string[]): string[] {
 }
 
 async function getAdminNamespaces(): Promise<string[]> {
-    const directories = await file.walk(path.resolve(nconf.get('views_dir'), 'admin'));
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    const directories = await file.walk(path.resolve(nconf.get('views_dir'), 'admin')) as string[];
     return filterDirectories(directories);
 }
 
 function sanitize(html: string): string {
     // reduce the template to just meaningful text
     // remove all tags and strip out scripts, etc completely
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     return sanitizeHTML(html, {
         allowedTags: [],
         allowedAttributes: [],
-    });
+    }) as string;
 }
 
 function simplify(translations: string): string {
@@ -77,6 +79,7 @@ async function initFallback(namespace: string): Promise<{
     translations: string;
     title?: string;
 }> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const template = await fs.promises.readFile(path.resolve(nconf.get('views_dir'), `${namespace}.tpl`), 'utf8');
 
     const title = nsToTitle(namespace);
@@ -106,15 +109,6 @@ async function fallback(namespace: string): Promise<{
     return params;
 }
 
-async function initDict(language: string): Promise<{
-    namespace: string;
-    translations: string;
-    title?: string;
-}[]> {
-    const namespaces = await getAdminNamespaces();
-    return await Promise.all(namespaces.map(ns => buildNamespace(language, ns)));
-}
-
 async function buildNamespace(language: string, namespace: string): Promise<{
     namespace: string;
     translations: string;
@@ -122,21 +116,21 @@ async function buildNamespace(language: string, namespace: string): Promise<{
 }> {
     const translator = Translator.create(language);
     try {
-        const translations = await translator.getTranslation(namespace);
+        const translations: object = await translator.getTranslation(namespace);
         if (!translations || !Object.keys(translations).length) {
             return await fallback(namespace);
         }
         // join all translations into one string separated by newlines
-        let str = Object.keys(translations).map(key => translations[key]).join('\n');
+        let str: string = Object.values(translations).join('\n');
         str = sanitize(str);
 
         const titleMatch = namespace.match(/admin\/(.+?)\/(.+?)$/);
 
-        const title = titleMatch 
-            ? `[[admin/menu:section-${
+        const title = titleMatch ?
+            `[[admin/menu:section-${
                 titleMatch[1] === 'development' ? 'advanced' : titleMatch[1]
-        }]]${titleMatch[2] ? (` > [[admin/menu:${
-            titleMatch[1]}/${titleMatch[2]}]]`) : ''}`: '';
+            }]]${titleMatch[2] ? (` > [[admin/menu:${
+                titleMatch[1]}/${titleMatch[2]}]]`) : ''}` : '';
 
         const translatedTitle = await translator.translate(title);
         return {
@@ -145,12 +139,23 @@ async function buildNamespace(language: string, namespace: string): Promise<{
             title: translatedTitle,
         };
     } catch (err) {
-        winston.error(err.stack);
+        if (err instanceof Error) {
+            winston.error(err.stack);
+        }
         return {
             namespace: namespace,
             translations: '',
         };
     }
+}
+
+async function initDict(language: string): Promise<{
+    namespace: string;
+    translations: string;
+    title?: string;
+}[]> {
+    const namespaces = await getAdminNamespaces();
+    return await Promise.all(namespaces.map(ns => buildNamespace(language, ns)));
 }
 
 const cache: DictCache = {};
@@ -173,5 +178,5 @@ export {
     getDictionary,
     filterDirectories,
     simplify,
-    sanitize
+    sanitize,
 };

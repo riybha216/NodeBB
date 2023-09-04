@@ -60,6 +60,7 @@ function filterDirectories(directories) {
 exports.filterDirectories = filterDirectories;
 function getAdminNamespaces() {
     return __awaiter(this, void 0, void 0, function* () {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const directories = yield file.walk(path.resolve(nconf_1.default.get('views_dir'), 'admin'));
         return filterDirectories(directories);
     });
@@ -67,6 +68,7 @@ function getAdminNamespaces() {
 function sanitize(html) {
     // reduce the template to just meaningful text
     // remove all tags and strip out scripts, etc completely
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     return (0, sanitize_html_1.default)(html, {
         allowedTags: [],
         allowedAttributes: [],
@@ -89,6 +91,7 @@ function nsToTitle(namespace) {
 const fallbackCache = {};
 function initFallback(namespace) {
     return __awaiter(this, void 0, void 0, function* () {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const template = yield fs.promises.readFile(path.resolve(nconf_1.default.get('views_dir'), `${namespace}.tpl`), 'utf8');
         const title = nsToTitle(namespace);
         let translations = sanitize(template);
@@ -112,12 +115,6 @@ function fallback(namespace) {
         return params;
     });
 }
-function initDict(language) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const namespaces = yield getAdminNamespaces();
-        return yield Promise.all(namespaces.map(ns => buildNamespace(language, ns)));
-    });
-}
 function buildNamespace(language, namespace) {
     return __awaiter(this, void 0, void 0, function* () {
         const translator = translator_1.Translator.create(language);
@@ -127,11 +124,11 @@ function buildNamespace(language, namespace) {
                 return yield fallback(namespace);
             }
             // join all translations into one string separated by newlines
-            let str = Object.keys(translations).map(key => translations[key]).join('\n');
+            let str = Object.values(translations).join('\n');
             str = sanitize(str);
             const titleMatch = namespace.match(/admin\/(.+?)\/(.+?)$/);
-            const title = titleMatch
-                ? `[[admin/menu:section-${titleMatch[1] === 'development' ? 'advanced' : titleMatch[1]}]]${titleMatch[2] ? (` > [[admin/menu:${titleMatch[1]}/${titleMatch[2]}]]`) : ''}` : '';
+            const title = titleMatch ?
+                `[[admin/menu:section-${titleMatch[1] === 'development' ? 'advanced' : titleMatch[1]}]]${titleMatch[2] ? (` > [[admin/menu:${titleMatch[1]}/${titleMatch[2]}]]`) : ''}` : '';
             const translatedTitle = yield translator.translate(title);
             return {
                 namespace: namespace,
@@ -140,12 +137,20 @@ function buildNamespace(language, namespace) {
             };
         }
         catch (err) {
-            winston_1.default.error(err.stack);
+            if (err instanceof Error) {
+                winston_1.default.error(err.stack);
+            }
             return {
                 namespace: namespace,
                 translations: '',
             };
         }
+    });
+}
+function initDict(language) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const namespaces = yield getAdminNamespaces();
+        return yield Promise.all(namespaces.map(ns => buildNamespace(language, ns)));
     });
 }
 const cache = {};
