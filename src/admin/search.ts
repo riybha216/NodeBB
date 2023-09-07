@@ -25,8 +25,7 @@ interface DictCache {
 
 function filterDirectories(directories: string[]): string[] {
     return directories.map(
-        // get the relative path
-        // convert dir to use forward slashes
+        // get the relative path, convert dir to use forward slashes
         dir => dir.replace(/^.*(admin.*?).tpl$/, '$1').split(path.sep).join('/')
     ).filter(
         // exclude .js files
