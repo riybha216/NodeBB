@@ -43,8 +43,7 @@ function filterDirectories(directories: string[]): string[] {
 }
 
 async function getAdminNamespaces(): Promise<string[]> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const directories = await file.walk(path.resolve(nconf.get('views_dir'), 'admin')) as string[];
+    const directories = await file.walk(path.resolve(nconf.get('views_dir') as string, 'admin')) as string[];
     return filterDirectories(directories);
 }
 
@@ -79,8 +78,7 @@ async function initFallback(namespace: string): Promise<{
     translations: string;
     title?: string;
 }> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const template = await fs.promises.readFile(path.resolve(nconf.get('views_dir'), `${namespace}.tpl`), 'utf8');
+    const template = await fs.promises.readFile(path.resolve(nconf.get('views_dir') as string, `${namespace}.tpl`), 'utf8');
 
     const title = nsToTitle(namespace);
     let translations = sanitize(template);
